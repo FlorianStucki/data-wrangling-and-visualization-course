@@ -72,7 +72,29 @@ dat_age_gender <- data_demographics_raw |>
 temp <- dat_age_gender |> distinct(responseNA_real_temp <- dat_age_gender |> distinct(response) #übersicht für die verschiedenen Antworten
 sapply(dat_age_gender,class) #welche klassen haben die columes
 
+
+```
+```{r}
 #Extract Gender from the Raw Data
+dat_Gender <- data_demographics_raw |> 
+  select(subject, trialcode, response) |> #select column
+  rename(unique_id= subject, item = trialcode) #rename column
+  
+
+Dat_long_complete <- pivot_wider(dat_Gender,names_from = "item", values_from = "response") |> #separate age/gender column
+  group_by(unique_id) |> #delete duplicate entries
+  reframe(age = first(age),gender=first(gender)) |> 
+  distinct(unique_id, .keep_all = TRUE) |> 
+  mutate(gender = case_when( #mutate gender to F, M and NB. Mark other entries as NA.
+    tolower(gender) == "female" ~ "F",
+    tolower(gender)== "woman" ~ "F",
+    tolower(gender) == "male" ~ "M",
+    tolower(gender) == "non binary" | tolower(gender) == "non-binary" ~ "NB",
+    TRUE ~ NA)) |>  
+  mutate(age = str_remove_all(age,"\\D"), #mark other entries than a Number as NA
+        age = na_if(age,""),
+        age = as.numeric(age)) #Mutate the age column as numeric
+    
 ```
 
 

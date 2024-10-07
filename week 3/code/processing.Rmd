@@ -14,8 +14,7 @@ output:
 
 ```{r, include=FALSE}
 
-knitr::opts_chunk$set(message = FALSE,
-                      warning = FALSE)
+knitr::opts_chunk$set
 
 ```
 
@@ -57,9 +56,15 @@ data_amp_raw <- read_csv("../data/raw/data_amp_raw.csv") |>
 Clean the demographics data so that summaries of age and gender can be made in the analysis.
 
 ```{r}
+#duplicad data
+data_demographics_raw |> 
+  count(subject) 
+  
+dat_unique_id <- data_demographics_raw |> 
+  filter(subject != "246532124")
 
 # wrangle the age data out of the raw
-dat_age <- data_demographics_raw |>
+dat_age <- dat_unique_id |>
   # rename for clarity
   rename(unique_id = subject, item = trialcode) |>
   # select useful columns
@@ -72,10 +77,14 @@ dat_age <- data_demographics_raw |>
          age = na_if(age, ""),
          age = as.numeric(age)) |>
   select(unique_id, age)
-  #select(-item) # alternative: negative selection
+
+#multi-line tiping
+#alt-mousdrag
+
+#select(-item) # alternative: negative selection
 
 # wrangle the gender data out of the raw
-dat_gender <- data_demographics_raw |>
+dat_gender <- dat_unique_id |>
   # rename for clarity
   rename(unique_id = subject, item = trialcode) |>
   # select useful columns
@@ -89,6 +98,12 @@ dat_gender <- data_demographics_raw |>
          gender = na_if(gender, "")) |>
   select(unique_id, gender)
   #select(-item) # alternative: negative selection
+
+#Um alle möglichen EInträge zu sehen: Count(Variable)
+#Die zwei zusammenfügen mit join
+
+dat_age_gender <- full_join(dat_gender,dat_age, by = "unique_id")
+#join_rigth,join_left etc.
 
 ```
 

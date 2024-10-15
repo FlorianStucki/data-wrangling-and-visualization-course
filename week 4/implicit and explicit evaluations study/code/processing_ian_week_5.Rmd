@@ -217,6 +217,28 @@ TODO - 14/10
 - check your exclusions worked.
 - use: mutate, group_by, summarize, _join
 
+```{r}
+#Identifying values in the response row that ar not in between 1 and 7
+response_amp_clean <- data_selfreport_tidied |> 
+  group_by(unique_id) |> 
+  mutate(exclude_list = ifelse(response %in% c(1:7), "include","exclude")) |> 
+  ungroup()
+
+#count the values  
+temp <- response_amp_clean |> 
+  count(exclude_list)
+
+#drop the values
+response_amp_clean <- response_amp_clean |> 
+  filter(exclude_list !="exclude")
+
+#control
+temp <- response_amp_clean |> 
+  count(exclude_list)
+
+```
+
+
 # Score measures
 
 ## Self-reports

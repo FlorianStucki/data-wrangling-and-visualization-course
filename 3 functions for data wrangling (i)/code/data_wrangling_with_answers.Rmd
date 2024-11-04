@@ -39,7 +39,7 @@ For any function in a loaded package, simply type `?` before the function's name
 ```{r}
 
 ?read_csv
-
+                                                                                                                                              
 ```
 
 - Why use {reader}'s `read_csv()` over the base R `read.csv()`? Because `read_csv()` is more explicit about what assumption it is making about column types, and prints warning messages about what it has assumed.
@@ -76,11 +76,9 @@ A very early step in any data processing is to understand how many rows are in a
 
 ```{r}
 
-nrow(data_demographics_raw)
-
-nrow(data_selfreport_raw)
-
-nrow(data_amp_raw)
+count(data_amp_raw)
+count(data_demographics_raw)
+count(data_selfreport_raw)
 
 ```
 
@@ -102,14 +100,14 @@ The output of what is left of the pipe is used as the input to the right of the 
 ```{r}
 
 # use a function without the pipe
-example_without_pipe <- clean_names(data_demographics_raw)
+pipe1 <- select(data_amp_raw,1:3)
 
 # use a function with the pipe. 
-example_with_pipe <- data_demographics_raw %>%
-  clean_names()
+pipe2 <- data_amp_raw%>%
+  select(1:3)
 
 # check they produce identical results
-identical(example_without_pipe, example_with_pipe)
+identical(pipe1,pipe2)
 
 ```
 
@@ -120,14 +118,13 @@ The pipe allows us to write code that reads from top to bottom, following a seri
 ```{r}
 
 # use a function without the pipe
-example_without_pipe <- clean_names(data_demographics_raw)
-
+pipe3 <- mutate(data_amp_raw, mean_cor = mean(correct))
 # use a function with the pipe. the output of what is left of the pipe is used as the input to the right of the pipe, usually as the first argument or the data argument.
-example_with_pipe <- data_demographics_raw %>%
-  clean_names()
+pipe4 <- data_amp_raw%>%
+  mutate(mean_cor = mean(correct))
 
 # check they produce identical results
-identical(example_without_pipe, example_with_pipe)
+identical(pipe3,pipe4)
 
 ```
 
@@ -136,26 +133,36 @@ The utility of this becomes more obvious when there are many steps:
 ```{r}
 
 # use a series of functions without the pipe
-example2_without_pipe <- summarise(group_by(mutate(rename(clean_names(dat = data_amp_raw), unique_id = subject, block = blockcode, trial_type = trialcode, rt = latency), fast_trial = ifelse(rt < 100, 1, 0)), unique_id), percent_fast_trials = mean(fast_trial)*100) 
+pipe5<-  clean_names(data_amp_raw)
+pipe5 <-  rename(pipe5,
+   unique_id = subject,
+   test_case = blockcode,
+   test_type = trialcode)
+pipe5<-  group_by(pipe5,test_type)
+pipe5<-  filter(pipe5,grepl("practice", test_type, ignore.case = TRUE))
+pipe5<-  mutate(pipe5,sum_real = n())
+pipe5<-  group_by(pipe5,unique_id)
+pipe5<-  summarize(pipe5,n())
 
 # use a series of functions with the pipe
-example2_with_pipe <- data_amp_raw %>%
+  pipe6<- data_amp_raw%>%
   # clean the column names
-  clean_names() %>%
+  clean_names()%>%
   # rename the columns
-  rename(unique_id = subject,
-         block = blockcode,
-         trial_type = trialcode,
-         rt = latency) %>%
+ rename(
+   unique_id = subject,
+   test_case = blockcode,
+   test_type = trialcode)%>%
   # create a new variable using existing ones
-  mutate(fast_trial = ifelse(rt < 100, 1, 0)) %>%
+ group_by(test_type)%>%
+   filter(grepl("practice", test_type, ignore.case = TRUE))%>%
+   mutate(sum_real = n())%>%
   # summarize across trials for each participant
-  group_by(unique_id) %>%
-  summarise(percent_fast_trials = mean(fast_trial)*100) 
+group_by(unique_id)%>%
+  summarize(n())
 
 # check they produce identical results
-identical(example2_without_pipe, example2_with_pipe)
-
+identical(pipe5,pipe6)
 ```
 
 # Using the pipe & cleaning column names
@@ -183,13 +190,14 @@ How would you know what variables are in a data frame? You can view the data fra
 ```{r}
 
 # print all column names
-colnames(data_demographics_clean_names)
+print(names(data_demographics_clean_names))
+
 # print all column names as a vector
-dput(colnames(data_demographics_clean_names))
+data_demographics_clean_names_names <- names(data_demographics_clean_names)
+print(data_demographics_clean_names_names)
 # print all column names as a vector using the pipe
-data_demographics_clean_names %>%
-  colnames() %>%
-  dput()
+data_demographics_clean_names_names <- names(data_demographics_clean_names)%>%
+  print()
 
 #data_selfreport_clean_names
 
@@ -224,14 +232,14 @@ Not all variables are useful to you. An early step in any data wrangling is to d
 
 ```{r}
 
-data_demographics_selected_columns <- data_demographics_renamed %>%
-  select(unique_id, item, response)
+data_amp_clean <- data_amp_renamed%>%
+  select(unique_id,block,trial_type)
 
-data_selfreport_selected_columns <- data_selfreport_renamed %>%
-  select(unique_id, item, response)
+data_selfreport_clean <- data_selfreport_renamed%>%
+  select(unique_id,item)
 
-data_amp_selected_columns <- data_amp_renamed %>%
-  select(unique_id, block, trial_type, correct, latency)
+data_demographics_clean <- data_demographics_renamed%>%
+  select(unique_id,item)
 
 ```
 
@@ -246,27 +254,25 @@ Remember: this is how we solve coding problems: break them down into smaller tas
 # remove all objects in environment
 rm(list = ls())
 
-
-data_demographics_trimmed <- read_csv("../data/raw/data_demographics_raw.csv") %>%
-  clean_names() %>%
-  rename(unique_id = subject,
-         item = trialcode) %>%
-  select(unique_id, item, response)
-
-
-data_selfreport_trimmed <- read_csv("../data/raw/data_selfreport_raw.csv") %>%
-  clean_names() %>%
-  rename(unique_id = subject,
-         item = trialcode) %>%
-  select(unique_id, item, response)
-
-
-data_amp_trimmed <- read_csv("../data/raw/data_amp_raw.csv") %>%
-  clean_names() %>%
+data_amp_clean <- read_csv(file = "../data/raw/data_amp_raw.csv")%>%
+  clean_names()%>%
   rename(unique_id = subject,
          block = blockcode,
-         trial_type = trialcode) %>%
-  select(unique_id, block, trial_type, correct, latency)
+         trial_type = trialcode)%>%
+  select(unique_id,block,trial_type,correct,latency)
+
+data_selfreport_clean <- read_csv(file = "../data/raw/data_selfreport_raw.csv")%>%
+  clean_names()%>%
+  rename(unique_id = subject,
+         item = trialcode)%>%
+  select(unique_id,item, response)
+
+data_demographics_clean <- read_csv(file = "../data/raw/data_demographics_raw.csv")%>%
+  clean_names()%>%
+  rename(unique_id = subject,
+         item = trialcode)%>%
+  select(unique_id,item,response)
+
 
 ```
 
@@ -276,36 +282,38 @@ After renaming and selecting columns, we know what columns we have. But what row
 
 ```{r}
 
-data_demographics_trimmed %>%
+
+
+data_demographics_clean %>%
+  count(unique_id)
+data_demographics_clean%>% count(item)
+data_demographics_clean%>% count(response)
+
+
+```
+
+```{r}
+
+data_selfreport_clean %>%
   count(item)
 
-data_demographics_trimmed %>%
+data_selfreport_clean %>%
   count(response)
 
 ```
 
 ```{r}
 
-data_selfreport_trimmed %>%
-  count(item)
-
-data_selfreport_trimmed %>%
-  count(response)
-
-```
-
-```{r}
-
-data_amp_trimmed %>%
+data_amp_clean %>%
   count(block)
 
-data_amp_trimmed %>%
+data_amp_clean %>%
   count(trial_type)
 
-data_amp_trimmed %>%
+data_amp_clean %>%
   count(correct)
 
-data_amp_trimmed %>%
+data_amp_clean %>%
   count(latency)
 
 ```
@@ -316,7 +324,7 @@ Note that it is also possible to use count to obtain the frequencies of sets of 
 
 ```{r}
 
-data_demographics_trimmed %>%
+data_demographics_clean %>%
   count(item, response)
 
 ```
@@ -325,7 +333,7 @@ It can be useful to arrange the output by the frequencies.
 
 ```{r}
 
-data_demographics_trimmed %>%
+data_demographics_clean %>%
   count(item, response) %>%
   arrange(desc(n)) # arrange in descending order
 
@@ -342,16 +350,16 @@ You can specify the logical test for filtering in many ways, including equivalen
 ```{r}
 
 # example using equivalence
-example_equivalence <- data_amp_trimmed %>%
-  filter(block == "test")
+equivalence <- data_amp_clean %>%
+  filter(correct ==1)
 
 # example using negation
-example_negation <- data_selfreport_trimmed %>%
-  filter(item != "instructions")
+negation <- data_amp_clean %>%
+  filter(trial_type != "age")
 
 # example using membership
-example_membership <- data_selfreport_trimmed %>%
-  filter(item %in% c("positive", "prefer", "like"))
+membership <- data_amp_clean %>%
+  filter(trial_type %in% c("gender","age"))
 
 ```
 
@@ -361,14 +369,13 @@ You can also have multiple criteria in your filter call, both of which have to b
 
 ```{r}
 
-example_multiple_criteria_1 <- data_amp_trimmed %>%
-  filter(block != "test" & correct == 1)
-
-example_multiple_criteria_2 <- data_amp_trimmed %>%
-  filter(block != "test" | correct == 1)
+MC1 <- data_amp_clean %>%
+  filter(trial_type %in% c("gender") & trial_type %in% c("age"))
+MC2 <- data_amp_clean %>%
+  filter(trial_type %in% c("gender") | trial_type %in% c("age"))
 
 # note that these provide different results - make sure you understand why
-identical(example_multiple_criteria_1, example_multiple_criteria_2)
+identical(MC1,MC2)
 
 ```
 
@@ -377,12 +384,13 @@ identical(example_multiple_criteria_1, example_multiple_criteria_2)
 Filter the self reports data frame to remove the instructions. Filter the AMP data frame to remove the practice blocks and the instruction trials.
 
 ```{r}
+data_amp_clean2<- data_amp_clean%>%
+  filter(block != "practice")
 
-data_selfreport_trials <- data_selfreport_trimmed %>%
-  filter(item %in% c("positive", "prefer", "like"))
+data_selfreport_clean2 <- data_selfreport_clean %>%
+  filter(item !="instructions")
+  
 
-data_amp_test_trials <- data_amp_trimmed %>%
-  filter(block == "test" & trial_type != "instructions")
 
 ```
 
@@ -401,15 +409,13 @@ Which is for rows and which is for columns?
 ```{r}
 
 # mutating new variables
-example_1 <- data_amp_test_trials %>%
-  mutate(latency_plus_1 = latency + 1)
-
-example_2 <- data_amp_test_trials %>%
-  mutate(log_latency = log(latency))
+e1 <- data_amp_raw %>%
+  mutate(Juni = date %in% c("23.06.22"))
 
 # mutating the contents of existing variables
-example_3 <- data_amp_test_trials %>%
-  mutate(latency = latency / 1000) # latency is now in seconds rather than milliseconds
+e2 <- data_amp_clean %>%
+  mutate(latency = latency*0.6)
+
 
 ```
 
@@ -418,14 +424,14 @@ The operations inside mutate can range from the very simple, like the above, to 
 ```{r}
 
 # illustrate the problem with the gender responses:
-data_demographics_trimmed %>%
+data_demographics_clean %>%
   # filter only the gender item, not age
   filter(item == "gender") %>%
   count(response) %>%
   arrange(desc(n))
 
 # clean up the gender variable
-data_demographics_gender_tidy_1 <- data_demographics_trimmed %>%
+data_demographics_gender_tidy_1 <- data_demographics_clean %>%
   # filter only the gender item, not age
   filter(item == "gender") %>%
   # change the name of the response variable to what it now represents: gender
@@ -455,7 +461,7 @@ A single mutate call can contain multiple mutates. The code from the last chunk 
 ```{r}
 
 # clean up the gender variable
-data_demographics_gender_tidy_2 <- data_demographics_trimmed %>%
+data_demographics_gender_tidy_2 <- data_demographics_clean %>%
   # filter only the gender item, not age
   filter(item == "gender") %>%
   # change the name of the response variable to what it now represents: gender
@@ -487,7 +493,7 @@ Try doing this with a simple logical test of whether latency < 100. You can do t
 
 ```{r}
 
-data_amp_test_trials_with_fast_trials <- data_amp_test_trials %>%
+data_amp_test_trials_with_fast_trials <- data_amp_clean %>%
   mutate(fast_trial = latency < 100)
 
 ```
@@ -503,12 +509,12 @@ In simple cases like this, you can use `mutate()` and `ifelse()` to change impos
 ```{r}
 
 # what values are present?
-data_demographics_trimmed %>%
+data_demographics_clean %>%
   filter(item == "age") %>%
   count(response) 
 
 # fix them with mutate
-data_demographics_age_tidy <- data_demographics_trimmed %>%
+data_demographics_age_tidy <- data_demographics_clean %>%
   filter(item == "age") %>%
   mutate(response = ifelse(response == "old", NA, response),
          response = as.numeric(response)) %>%

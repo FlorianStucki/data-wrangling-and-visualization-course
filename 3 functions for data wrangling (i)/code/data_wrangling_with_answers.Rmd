@@ -539,14 +539,14 @@ Use `ifelse()` and `%in%` inside `mutate()` to change values other than the Like
 ```{r}
 
 # what values are present?
-data_selfreport_trials %>%
+data_selfreport_clean2 %>%
   count(response)
 
 # what type of data is the response column?
-class(data_selfreport_trials$response)
+class(data_selfreport_clean2$response)
 
 # remove non Likert values
-data_selfreport_tidy <- data_selfreport_trials %>%
+data_selfreport_tidy <- data_selfreport_clean2 %>%
   mutate(response = ifelse(response %in% c("1", "2", "3", "4", "5", "6", "7"), response, NA),
          response = as.numeric(response))
 
@@ -559,10 +559,15 @@ class(data_selfreport_tidy$response)
 ```
 
 What other ways are there of implementing this mutate, e.g., without using `%in%`? What are the pros and cons of each?
+Adress direct the problem, but cod is not useable for new data.
 
 ```{r}
 
 # write examples here
+
+data_selfreport_tidy3 <- data_selfreport_clean2 %>%
+  mutate(response = ifelse(response == "Ctrl+'B'", NA, response))
+  
 
 ```
 

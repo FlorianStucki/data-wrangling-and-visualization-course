@@ -559,7 +559,7 @@ class(data_selfreport_tidy$response)
 ```
 
 What other ways are there of implementing this mutate, e.g., without using `%in%`? What are the pros and cons of each?
-Adress direct the problem, but cod is not useable for new data.
+Adresses directli the problem, but code is not useable for new data.
 
 ```{r}
 
@@ -579,16 +579,15 @@ The AMP data needs to be reverse scored. Just like an item on a self-report that
 
 ```{r}
 
-data_amp_tidy <- data_amp_test_trials_with_fast_trials %>%
-  mutate(correct = case_when(trial_type == "prime_positive" ~ correct,
-                             trial_type == "prime_negative" & correct == 0 ~ 1,
-                             trial_type == "prime_negative" & correct == 1 ~ 0))
+data_amp_reverse <- data_amp_clean2 %>%
+  mutate(
+  case_when(
+    correct == 1 ~ 0,
+    correct == 0~ 1,
+    TRUE ~ NA
+  ))
 
-# you can also specify a default value to return if none of the logical tests are passed with 'TRUE ~':
-data_amp_tidy <- data_amp_test_trials_with_fast_trials %>%
-  mutate(correct = case_when(trial_type == "prime_negative" & correct == 0 ~ 1,
-                             trial_type == "prime_negative" & correct == 1 ~ 0,
-                             TRUE ~ correct))
+
   
 ```
 
@@ -629,19 +628,21 @@ It is very common that we need to create summaries across rows. For example, to 
 ```{r}
 
 # mean
-data_demographics_age_tidy %>%
-  summarize(mean_age = mean(age, na.rm = TRUE))
-
+data_demographics_age_tidy <- data_demographics_clean %>%
+  pivot_wider(names_from = item, values_from = response)%>%
+   mutate(age = as.numeric(ifelse(grepl("^[0-9]+$", age), age, NA)))%>%
+   summarize(mean(age, na.rm =TRUE))
 # SD
-data_demographics_age_tidy %>%
-  summarize(sd_age = sd(age, na.rm = TRUE))
+data_demographics_age_tidy <- data_demographics_clean %>%
+  pivot_wider(names_from = item, values_from = response)%>%
+   mutate(age = as.numeric(ifelse(grepl("^[0-9]+$", age), age, NA)))%>%
+   summarize(sd(age, na.rm =TRUE))
 
 # mean and SD with rounding, illustrating how multiple summarizes can be done in one function call
-data_demographics_age_tidy %>%
-  summarize(mean_age = mean(age, na.rm = TRUE),
-            mean_age = round_half_up(mean_age, digits = 2),
-            sd_age = sd(age, na.rm = TRUE),
-            sd_age = round_half_up(sd_age, digits = 2))
+data_demographics_age_tidy <- data_demographics_clean %>%
+  pivot_wider(names_from = item, values_from = response)%>%
+   mutate(age = as.numeric(ifelse(grepl("^[0-9]+$", age), age, NA)))%>%
+   summarize(mean(age, na.rm =TRUE),sd(age, na.rm =TRUE))
 
 ```
 
@@ -748,8 +749,21 @@ Currently each participant has up to three responses on the self-report scales (
 Using only participants with complete data, calculate the mean and SD of all participant's mean scores on the self-reports.
 
 ```{r}
+data_selfreport_raw <- read.csv(file = "../data/raw/data_selfreport_raw.csv") |>  
+  select(unique_id = subject, item = trialcode, response)
 
-# data_selfreport_tidy
+data_selfreport_mean_sd <- data_selfreport_raw |> 
+  group_by(unique_id) %>% 
+  count() %>%
+  filter(n == 4) |> 
+  rename(number = "n")%>%
+  left_join(data_selfreport_raw, by = "unique_id") |>
+  select(-number) |> 
+   filter(item != "instructions") |> 
+  mutate(response = as.numeric(response)) |> 
+  group_by(unique_id) |> 
+  summarize(mean = mean(response),sd = sd(response))
+  
 
 ```
 

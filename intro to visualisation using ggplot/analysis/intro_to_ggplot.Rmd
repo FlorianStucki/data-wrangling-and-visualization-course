@@ -35,7 +35,7 @@ library(scales)
 library(dplyr)
 library(tidyr)
 library(plotrix)
-library(ThemePark)
+
 library(patchwork)
 library(janitor)
 library(knitr)
@@ -155,7 +155,7 @@ Note that you can add additional function calls to objects later, e.g., overridi
 
 ```{r}
 
-plot_1 + theme_barbie()
+
 
 ```
 
@@ -313,8 +313,14 @@ summary_selfreport <- data_after_exclusions |>
   group_by(gender) |> 
   summarise(selfreport_mean=mean(mean_self_report), selfreport_se = std.error(mean_self_report))
 
-ggplot(summary_selfreport, aes(selfreport_mean,selfreport_se))+
-  geom_col()
+ggplot(summary_selfreport, aes(gender,selfreport_mean,fill = gender))+
+  geom_col() +
+    geom_errorbar(aes(ymin = selfreport_mean - selfreport_se, 
+                    ymax = selfreport_mean + selfreport_se), 
+                width = 0.1, 
+                color = "black")+
+  theme_classic()+
+    scale_fill_manual(values = c("female" = "pink", "male" = "blue"))
 
 
 ```
